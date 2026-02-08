@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RetroFlow 溯光</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <style>
+        /* 玻璃拟态背景 */
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-slate-900 text-gray-800 dark:text-gray-100 min-h-screen transition-colors duration-300">
+    <div id="app" class="max-w-md mx-auto min-h-screen flex flex-col relative pb-10">
+        
+        <div class="p-6 flex justify-between items-center sticky top-0 z-50 bg-slate-900/80 backdrop-blur-md">
+            <div>
+                <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">RetroFlow</h1>
+                <p class="text-xs text-slate-400">溯光 · NAS 流量监控</p>
+            </div>
+            <button @click="generatePoster" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-full text-xs font-medium transition">
+                生成日报
+            </button>
+        </div>
+
+        <div class="px-6 mb-6">
+            <div class="glass rounded-2xl p-6 relative overflow-hidden">
+                <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-blue-500 rounded-full blur-3xl opacity-20"></div>
+                <div class="relative z-10">
+                    <p class="text-slate-400 text-xs mb-1">实时总下行速度</p>
+                    <div class="text-4xl font-bold font-mono text-white mb-4">
+                        {{ formatSpeed(totalSpeedDown) }}<span class="text-base font-normal text-slate-500">/s</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <div>
+                            <span class="block text-slate-500 text-xs">总上传</span>
+                            <span class="font-mono text-emerald-400">{{ formatBytes(totalUpload) }}</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="block text-slate-500 text-xs">总下载</span>
+                            <span class="font-mono text-blue-400">{{ formatBytes(totalDownload) }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-6 flex-1">
+            <h2 class="text-sm font-bold text-slate-500 mb-3 uppercase tracking-wider">活跃容器</h2>
+            <div class="space-y-3">
+                <div v-for="item in stats" :key="item.name" class="glass rounded-xl p-4 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-lg">
+                            {{ getIcon(item.name) }}
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-sm truncate w-32">{{ item.name }}</h3>
+                            <div class="flex gap-2 text-xs text-slate-400">
+                                <span class="bg-slate-800 px-1.5 rounded">{{ item.type }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xs text-slate-500 mb-1">流量消耗</div>
+                        <div class="font-mono text-xs">
+                            <span class="text-blue-400">↓ {{ formatBytes(item.download) }}</span>
+                        </div>
+                        <div class="font-mono text-xs">
+                            <span class="text-emerald-400">↑ {{ formatBytes(item.upload) }}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div v-if="stats.length === 0" class="text-center py-10 text-slate-500 text-sm">
+                    暂无活跃数据...
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center py-6 text-xs text-slate-600">
+            Design by RetroFlow
+        </div>
+
+        <div id="poster-area" class="fixed top-0 left-0 -z-50 w-[375px] bg-slate-900 text-white p-6 opacity-0 pointer-events-none">
+            <div class="border border-slate-700 rounded-2xl p-6 bg-gradient-to-b from-slate-800 to-slate-900">
+                <h1 class="text-3xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">RetroFlow</h1>
+                <p class="text-sm text-slate-400 mb-8">{{ currentDate }} · 流量日报</p>
+                
+                <div class="bg-slate-800/50 rounded-xl p-4 mb-6 text-center border border-slate-700">
+                    <p class="text-xs text-slate-400 mb-1">今日流量冠军</p>
+                    <p class="text-2xl font-bold text-white">{{ topContainer.name }}</p>
+                    <p class="text-sm text-blue-400 mt-1">消耗 {{ formatBytes(topContainer.total) }}</p>
+                </div>
+
+                <div class="space-y-2 mb-8">
+                    <div v-for="(item, index) in stats.slice(0, 5)" :key="item.name" class="flex justify-between text-sm py-2 border-b border-slate-800">
+                        <span>{{ index + 1 }}. {{ item.name }}</span>
+                        <span class="font-mono text-slate-300">{{ formatBytes(item.download + item.upload) }}</span>
+                    </div>
+                </div>
+
+                <div class="text-center text-xs text-slate-500">
+                    Generated by RetroFlow NAS Monitor
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                const stats = ref([]);
+                const lastStats = ref({}); // 用于计算瞬时速度
+                const totalSpeedDown = ref(0);
+
+                // 格式化字节
+                const formatBytes = (bytes) => {
+                    if (bytes === 0) return '0 B';
+                    const k = 1024;
+                    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                };
+
+                // 格式化速度
+                const formatSpeed = (bytesPerSec) => {
+                    return formatBytes(bytesPerSec);
+                };
+
+                // 获取图标
+                const getIcon = (name) => {
+                    name = name.toLowerCase();
+                    if (name.includes('emby')) return '🎬';
+                    if (name.includes('nginx')) return '🌐';
+                    if (name.includes('qbittorrent') || name.includes('download')) return '⬇️';
+                    if (name.includes('retroflow')) return '📊';
+                    if (name.includes('docker')) return '🐳';
+                    return '📦';
+                };
+
+                // 计算属性
+                const totalUpload = computed(() => stats.value.reduce((acc, cur) => acc + cur.upload, 0));
+                const totalDownload = computed(() => stats.value.reduce((acc, cur) => acc + cur.download, 0));
+                const currentDate = new Date().toLocaleDateString();
+                
+                const topContainer = computed(() => {
+                    if (stats.value.length === 0) return { name: '-', total: 0 };
+                    const sorted = [...stats.value].sort((a, b) => (b.upload + b.download) - (a.upload + a.download));
+                    return { 
+                        name: sorted[0].name, 
+                        total: sorted[0].upload + sorted[0].download 
+                    };
+                });
+
+                // 获取数据
+                const fetchData = async () => {
+                    try {
+                        const res = await fetch('/api/stats');
+                        const data = await res.json();
+                        
+                        // 简单的速度计算逻辑 (实际应由后端做，这里前端模拟一下)
+                        let currentTotalDown = 0;
+                        data.forEach(item => {
+                            currentTotalDown += item.download;
+                        });
+
+                        // 估算速度 (和上一次的总量做差)
+                        if (window.lastTotalDown !== undefined) {
+                            const diff = currentTotalDown - window.lastTotalDown;
+                            if (diff >= 0) totalSpeedDown.value = diff; // 这里的diff是3秒内的增量
+                        }
+                        window.lastTotalDown = currentTotalDown;
+
+                        stats.value = data.sort((a, b) => (b.download + b.upload) - (a.download + a.upload));
+                    } catch (e) {
+                        console.error("Fetch error:", e);
+                    }
+                };
+
+                // 生成海报
+                const generatePoster = () => {
+                    const posterEl = document.getElementById('poster-area');
+                    // 临时显示用于截图
+                    posterEl.style.opacity = '1';
+                    posterEl.style.zIndex = '100';
+                    
+                    html2canvas(posterEl, {
+                        backgroundColor: '#0f172a',
+                        scale: 2
+                    }).then(canvas => {
+                        const link = document.createElement('a');
+                        link.download = `retroflow-report-${Date.now()}.png`;
+                        link.href = canvas.toDataURL();
+                        link.click();
+                        
+                        // 恢复隐藏
+                        posterEl.style.opacity = '0';
+                        posterEl.style.zIndex = '-50';
+                    });
+                };
+
+                onMounted(() => {
+                    fetchData();
+                    setInterval(fetchData, 3000); // 3秒刷新一次
+                });
+
+                return {
+                    stats, formatBytes, formatSpeed, getIcon,
+                    totalUpload, totalDownload, totalSpeedDown,
+                    generatePoster, currentDate, topContainer
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
