@@ -3,177 +3,229 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RetroFlow 溯光 Dashboard</title>
+    <title>RetroFlow 溯光</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                    }
+                }
+            }
+        }
+    </script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', system-ui, sans-serif; }
-        .glass-panel {
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* 玻璃拟态 (深色模式) */
+        .dark .glass-panel {
             background: rgba(30, 41, 59, 0.4);
             backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
-        .nav-btn.active {
-            background: rgba(59, 130, 246, 0.2);
-            color: #60a5fa;
-            border-color: rgba(59, 130, 246, 0.4);
+        
+        /* 陶瓷质感 (浅色模式) */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
         }
+
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
     </style>
 </head>
-<body class="bg-[#0b1121] text-slate-200 min-h-screen">
+<body class="bg-gray-50 dark:bg-[#0b1121] text-slate-800 dark:text-slate-200 min-h-screen transition-colors duration-300">
     <div id="app" class="min-h-screen flex flex-col">
         
-        <header class="border-b border-white/5 bg-[#0f172a]/80 backdrop-blur-md sticky top-0 z-50">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <header class="sticky top-0 z-50 bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur-md border-b border-gray-200 dark:border-white/5 transition-colors duration-300">
+            <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-500 to-purple-600 flex items-center justify-center font-bold text-white">R</div>
-                    <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">RetroFlow</h1>
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-blue-500/30">R</div>
+                    <div>
+                        <h1 class="font-bold text-lg tracking-tight text-slate-900 dark:text-white leading-tight">RetroFlow</h1>
+                        <p class="text-[10px] font-medium text-slate-500 uppercase tracking-widest">Dashboard</p>
+                    </div>
                 </div>
-                <div class="flex gap-2">
-                    <button @click="currentTab='live'" :class="['px-4 py-1.5 text-sm rounded-lg border border-transparent transition-all', currentTab==='live' ? 'nav-btn active' : 'text-slate-400 hover:text-white']">监控台</button>
-                    <button @click="currentTab='report'; loadHistory('day')" :class="['px-4 py-1.5 text-sm rounded-lg border border-transparent transition-all', currentTab==='report' ? 'nav-btn active' : 'text-slate-400 hover:text-white']">历史报表</button>
+                
+                <div class="flex items-center gap-3">
+                    <div class="hidden md:flex bg-gray-100 dark:bg-slate-800 p-1 rounded-lg">
+                        <button @click="currentTab='live'" :class="['px-4 py-1.5 text-xs font-medium rounded-md transition-all', currentTab==='live' ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-600 dark:text-blue-400' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300']">实时监控</button>
+                        <button @click="currentTab='report'; loadHistory('day')" :class="['px-4 py-1.5 text-xs font-medium rounded-md transition-all', currentTab==='report' ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-600 dark:text-blue-400' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300']">统计报表</button>
+                    </div>
+
+                    <button @click="toggleTheme" class="w-9 h-9 rounded-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors">
+                        <span v-if="isDark" class="text-lg">🌙</span>
+                        <span v-else class="text-lg">☀</span>
+                    </button>
                 </div>
             </div>
         </header>
 
-        <main class="flex-1 max-w-7xl mx-auto w-full p-4 sm:p-6 lg:p-8">
+        <main class="flex-1 max-w-7xl mx-auto w-full p-4 lg:p-8 space-y-8">
             
-            <div v-show="currentTab === 'live'" class="space-y-6 animate-fade-in">
-                
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="glass-panel rounded-2xl p-6 relative overflow-hidden md:col-span-1">
-                        <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
-                        <p class="text-xs text-slate-400 uppercase tracking-widest font-semibold mb-2">Realtime Downlink</p>
-                        <div class="flex items-baseline gap-2">
-                            <span class="text-4xl lg:text-5xl font-bold text-white font-mono">{{ formatNum(totalSpeedDown) }}</span>
-                            <span class="text-sm text-slate-500">{{ formatUnit(totalSpeedDown) }}/s</span>
-                        </div>
-                        <div class="mt-6 pt-4 border-t border-white/5 flex justify-between items-end">
-                            <div>
-                                <div class="text-xs text-slate-500">累计上传</div>
-                                <div class="text-emerald-400 font-mono text-sm">{{ formatBytes(totalUpload) }}</div>
-                            </div>
-                            <div class="text-right">
-                                <div class="text-xs text-slate-500">累计下载</div>
-                                <div class="text-blue-400 font-mono text-sm">{{ formatBytes(totalDownload) }}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="glass-panel rounded-2xl p-4 md:col-span-2 flex flex-col">
-                        <h3 class="text-xs text-slate-500 uppercase mb-2">Traffic Wave (30s)</h3>
-                        <div id="liveChart" class="flex-1 w-full min-h-[160px]"></div>
-                    </div>
-                </div>
-
-                <div>
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-lg font-bold text-slate-200">容器状态 <span class="text-xs font-normal text-slate-500 ml-2">({{ stats.length }} running)</span></h2>
-                        <span class="text-xs text-slate-500 flex items-center gap-1">
-                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Live
-                        </span>
-                    </div>
+            <transition name="fade" mode="out-in">
+                <div v-if="currentTab === 'live'" key="live" class="space-y-8">
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        <div v-for="item in sortedStats" :key="item.name" class="glass-panel rounded-xl p-4 hover:bg-white/5 transition-colors group">
-                            <div class="flex justify-between items-start mb-3">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-lg bg-[#1e293b] flex items-center justify-center text-xl shadow-inner border border-white/5">
-                                        {{ getIcon(item.name) }}
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="glass-panel rounded-2xl p-6 lg:col-span-1 relative overflow-hidden group">
+                            <div class="absolute top-0 right-0 w-40 h-40 bg-blue-500/10 dark:bg-blue-500/20 rounded-full blur-3xl -mr-10 -mt-10 transition-opacity group-hover:opacity-100 opacity-70"></div>
+                            <div class="relative z-10">
+                                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Bandwidth</p>
+                                <div class="flex items-baseline gap-2 mb-6">
+                                    <span class="text-5xl font-bold text-slate-900 dark:text-white tracking-tighter">{{ formatNum(totalSpeedDown) }}</span>
+                                    <span class="text-base font-medium text-slate-500">{{ formatUnit(totalSpeedDown) }}/s</span>
+                                </div>
+                                
+                                <div class="grid grid-cols-2 gap-4 border-t border-gray-100 dark:border-white/5 pt-4">
+                                    <div>
+                                        <div class="text-xs text-slate-500 mb-1">总上传 Upload</div>
+                                        <div class="font-mono text-sm font-semibold text-emerald-500 dark:text-emerald-400">{{ formatBytes(totalUpload) }}</div>
                                     </div>
-                                    <div class="overflow-hidden">
-                                        <h3 class="font-bold text-sm text-slate-200 truncate max-w-[120px]" :title="item.name">{{ item.name }}</h3>
-                                        <div class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 inline-block mt-1">{{ item.type }}</div>
+                                    <div>
+                                        <div class="text-xs text-slate-500 mb-1">总下载 Download</div>
+                                        <div class="font-mono text-sm font-semibold text-blue-500 dark:text-blue-400">{{ formatBytes(totalDownload) }}</div>
                                     </div>
-                                </div>
-                                <div v-if="item.speed > 0" class="flex h-2 w-2">
-                                    <span class="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-green-400 opacity-75"></span>
-                                    <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                                </div>
-                            </div>
-                            
-                            <div class="space-y-2">
-                                <div class="flex justify-between text-xs">
-                                    <span class="text-slate-500">下载</span>
-                                    <span class="font-mono text-blue-400">{{ formatBytes(item.download) }}</span>
-                                </div>
-                                <div class="flex justify-between text-xs">
-                                    <span class="text-slate-500">上传</span>
-                                    <span class="font-mono text-emerald-400">{{ formatBytes(item.upload) }}</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div v-if="stats.length === 0" class="col-span-full py-10 text-center text-slate-600">
-                            正在扫描容器...
+                        <div class="glass-panel rounded-2xl p-5 lg:col-span-2 flex flex-col">
+                            <div class="flex justify-between items-center mb-2">
+                                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Network Activity</h3>
+                                <span class="flex h-2 w-2 relative">
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                                </span>
+                            </div>
+                            <div id="liveChart" class="flex-1 w-full min-h-[160px]"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex items-center justify-between mb-5">
+                            <h2 class="text-xl font-bold text-slate-900 dark:text-white">Active Containers</h2>
+                            <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                                {{ stats.length }} running
+                            </span>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            <div v-for="item in sortedStats" :key="item.name" class="glass-panel rounded-xl p-4 transition-all hover:-translate-y-1 duration-300">
+                                <div class="flex justify-between items-start mb-4">
+                                    <div class="flex items-center gap-3 overflow-hidden">
+                                        <div class="w-10 h-10 rounded-lg bg-gray-100 dark:bg-slate-800 flex items-center justify-center text-xl shrink-0">
+                                            {{ getIcon(item.name) }}
+                                        </div>
+                                        <div class="min-w-0">
+                                            <h3 class="font-bold text-sm text-slate-800 dark:text-slate-200 truncate" :title="item.name">{{ item.name }}</h3>
+                                            <div class="text-[10px] font-mono text-slate-400 mt-0.5 truncate">{{ item.type }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="space-y-2.5">
+                                    <div class="flex justify-between items-center text-xs">
+                                        <span class="text-slate-500">Down</span>
+                                        <span class="font-mono font-medium text-slate-700 dark:text-slate-300 bg-gray-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                                            {{ formatBytes(item.download) }}
+                                        </span>
+                                    </div>
+                                    <div class="flex justify-between items-center text-xs">
+                                        <span class="text-slate-500">Up</span>
+                                        <span class="font-mono font-medium text-slate-700 dark:text-slate-300 bg-gray-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                                            {{ formatBytes(item.upload) }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div v-show="currentTab === 'report'" class="space-y-6">
-                <div class="glass-panel rounded-2xl p-6">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-lg font-bold">流量统计</h2>
-                        <div class="bg-slate-800 p-1 rounded-lg flex text-xs">
-                            <button v-for="r in ['day','month','year']" @click="loadHistory(r)" 
-                                :class="['px-3 py-1.5 rounded-md transition-all', reportRange===r ? 'bg-slate-600 text-white' : 'text-slate-400']">
-                                {{ {day:'今日',month:'本月',year:'今年'}[r] }}
+                <div v-else key="report" class="space-y-6">
+                    <div class="glass-panel rounded-2xl p-6">
+                        <div class="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
+                            <h2 class="text-lg font-bold">Traffic History</h2>
+                            <div class="flex bg-gray-100 dark:bg-slate-800 p-1 rounded-lg">
+                                <button v-for="r in ['day','month','year']" @click="loadHistory(r)" 
+                                    :class="['px-4 py-1.5 text-xs font-medium rounded-md transition-all', reportRange===r ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500']">
+                                    {{ {day:'24H',month:'30 Days',year:'1 Year'}[r] }}
+                                </button>
+                            </div>
+                        </div>
+                        <div id="trendChart" class="w-full h-[300px]"></div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="glass-panel rounded-2xl p-6">
+                            <h3 class="text-sm font-bold text-slate-500 mb-6 uppercase tracking-wider">Top Consumers</h3>
+                            <div id="pieChart" class="w-full h-[250px]"></div>
+                        </div>
+                        <div class="space-y-4">
+                             <div class="glass-panel rounded-2xl p-6 flex justify-between items-center">
+                                <div>
+                                    <p class="text-xs text-slate-500 mb-1">Total Download</p>
+                                    <p class="text-2xl font-bold text-blue-500 dark:text-blue-400 font-mono">{{ formatBytes(reportTotalDown) }}</p>
+                                </div>
+                                <div class="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-500">⬇️</div>
+                            </div>
+                            <div class="glass-panel rounded-2xl p-6 flex justify-between items-center">
+                                <div>
+                                    <p class="text-xs text-slate-500 mb-1">Total Upload</p>
+                                    <p class="text-2xl font-bold text-emerald-500 dark:text-emerald-400 font-mono">{{ formatBytes(reportTotalUp) }}</p>
+                                </div>
+                                <div class="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-500">⬆️</div>
+                            </div>
+                            <button @click="generatePoster" class="w-full py-4 bg-slate-900 dark:bg-blue-600 text-white rounded-xl font-bold shadow-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+                                ✨ Generate Report
                             </button>
                         </div>
                     </div>
-                    <div id="trendChart" class="w-full h-[300px]"></div>
                 </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                     <div class="glass-panel rounded-2xl p-6">
-                        <h3 class="text-sm font-bold text-slate-400 mb-4">流量占比 Top 5</h3>
-                        <div id="pieChart" class="w-full h-[250px]"></div>
-                    </div>
-                    
-                    <div class="space-y-4">
-                        <div class="glass-panel rounded-2xl p-6 flex justify-between items-center">
-                            <div>
-                                <p class="text-xs text-slate-500">周期总下载</p>
-                                <p class="text-2xl font-bold text-blue-400 font-mono">{{ formatBytes(reportTotalDown) }}</p>
-                            </div>
-                            <div class="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500">↓</div>
-                        </div>
-                        <div class="glass-panel rounded-2xl p-6 flex justify-between items-center">
-                            <div>
-                                <p class="text-xs text-slate-500">周期总上传</p>
-                                <p class="text-2xl font-bold text-emerald-400 font-mono">{{ formatBytes(reportTotalUp) }}</p>
-                            </div>
-                            <div class="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500">↑</div>
-                        </div>
-                         <button @click="generatePoster" class="w-full py-4 glass-panel hover:bg-white/5 rounded-2xl text-sm font-bold transition-all flex items-center justify-center gap-2 text-slate-300">
-                            📸 生成海报
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <div id="poster-node" class="fixed top-0 left-0 w-[400px] bg-[#0b1121] p-0 -z-50 opacity-0 pointer-events-none">
-                <div class="p-8 bg-gradient-to-b from-slate-900 to-[#0b1121] border border-slate-800">
-                     <h1 class="text-3xl font-bold text-white mb-2">RetroFlow</h1>
-                     <p class="text-sm text-slate-500 mb-8">{{ new Date().toLocaleDateString() }} 流量日报</p>
-                     <div class="text-center py-8 bg-slate-800/30 rounded-2xl mb-8">
-                        <p class="text-xs text-slate-500 uppercase">总流量消耗</p>
-                        <p class="text-4xl font-bold text-blue-400 mt-2">{{ formatBytes(reportTotalDown + reportTotalUp) }}</p>
-                     </div>
-                     <div class="space-y-4">
-                        <div v-for="(item, i) in topReportItems" :key="i" class="flex justify-between border-b border-white/5 py-2">
-                            <span class="text-slate-300">{{ i+1 }}. {{ item.name }}</span>
-                            <span class="font-mono text-slate-500">{{ formatBytes(item.total) }}</span>
-                        </div>
-                     </div>
-                </div>
-            </div>
-
+            </transition>
         </main>
+
+        <div id="poster-node" class="fixed top-0 left-0 w-[400px] bg-[#0b1121] p-8 -z-50 pointer-events-none opacity-0">
+             <div class="border border-slate-800 rounded-3xl p-6 bg-gradient-to-br from-[#0f172a] to-[#0b1121] text-white">
+                 <div class="flex justify-between items-start mb-8">
+                    <div>
+                        <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400">RetroFlow</h1>
+                        <p class="text-sm text-slate-500 mt-1">Daily Traffic Report</p>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xs text-slate-600 uppercase">Date</div>
+                        <div class="font-mono text-slate-300">{{ new Date().toLocaleDateString() }}</div>
+                    </div>
+                 </div>
+                 <div class="bg-slate-800/50 rounded-2xl p-6 text-center mb-8 border border-slate-700/50">
+                    <p class="text-xs text-slate-400 uppercase tracking-widest mb-2">Total Traffic</p>
+                    <p class="text-4xl font-bold text-white font-mono">{{ formatBytes(reportTotalDown + reportTotalUp) }}</p>
+                 </div>
+                 <div class="space-y-3">
+                    <div v-for="(item, i) in topReportItems" :key="i" class="flex justify-between items-center py-2 border-b border-white/5 last:border-0">
+                        <div class="flex items-center gap-3">
+                            <span class="font-mono text-slate-600 w-4">0{{ i+1 }}</span>
+                            <span class="font-bold text-slate-200">{{ item.name }}</span>
+                        </div>
+                        <span class="font-mono text-blue-400 text-sm">{{ formatBytes(item.total) }}</span>
+                    </div>
+                 </div>
+                 <div class="mt-8 pt-6 border-t border-white/5 text-center text-xs text-slate-600 flex justify-between">
+                    <span>Generated by RetroFlow</span>
+                    <span>NAS Monitor</span>
+                 </div>
+             </div>
+        </div>
+
     </div>
 
     <script>
@@ -181,19 +233,39 @@
 
         createApp({
             setup() {
+                // 主题逻辑
+                const isDark = ref(localStorage.getItem('theme') !== 'light');
+                const toggleTheme = () => {
+                    isDark.value = !isDark.value;
+                    updateThemeClass();
+                };
+                const updateThemeClass = () => {
+                    const html = document.documentElement;
+                    if (isDark.value) {
+                        html.classList.add('dark');
+                        localStorage.setItem('theme', 'dark');
+                    } else {
+                        html.classList.remove('dark');
+                        localStorage.setItem('theme', 'light');
+                    }
+                    // 更新图表主题
+                    if (liveChartInstance) liveChartInstance.dispose();
+                    if (trendChartInstance) trendChartInstance.dispose();
+                    if (pieChartInstance) pieChartInstance.dispose();
+                    initLiveChart(); // 重绘
+                    if (currentTab.value === 'report') loadHistory(reportRange.value);
+                };
+
                 const currentTab = ref('live');
                 const stats = ref([]);
                 const totalSpeedDown = ref(0);
                 const totalUpload = ref(0);
                 const totalDownload = ref(0);
                 
-                // 图表实例
                 let liveChartInstance = null;
                 let trendChartInstance = null;
                 let pieChartInstance = null;
-                
-                // 实时图表数据缓冲
-                const liveChartData = ref(new Array(30).fill(0)); // 30秒数据
+                const liveChartData = ref(new Array(30).fill(0));
 
                 const formatBytes = (bytes) => {
                     if (bytes === 0) return '0 B';
@@ -217,31 +289,32 @@
 
                 const getIcon = (name) => {
                     name = name.toLowerCase();
-                    if (name.includes('emby') || name.includes('plex')) return '🎬';
+                    if (name.includes('emby') || name.includes('plex') || name.includes('jellyfin')) return '🎬';
                     if (name.includes('nginx') || name.includes('proxy')) return '🌐';
                     if (name.includes('qbittorrent') || name.includes('transmission')) return '⬇️';
                     if (name.includes('mysql') || name.includes('redis') || name.includes('db')) return '🗄️';
                     if (name.includes('homeassistant')) return '🏠';
-                    if (name.includes('docker')) return '🐳';
+                    if (name.includes('ssh')) return '💻';
+                    if (name.includes('smb')) return '📂';
                     return '📦';
                 };
 
                 const sortedStats = computed(() => {
-                    // 排序：有速度的排前面，然后按总流量排
-                    return [...stats.value].sort((a, b) => {
-                        const speedA = a.speed || 0; 
-                        const speedB = b.speed || 0;
-                        if (speedA !== speedB) return speedB - speedA;
-                        return (b.upload + b.download) - (a.upload + a.download);
-                    });
+                    return [...stats.value].sort((a, b) => (b.upload + b.download) - (a.upload + a.download));
                 });
 
-                // 初始化实时波形图
                 const initLiveChart = () => {
                     const el = document.getElementById('liveChart');
                     if (!el) return;
-                    liveChartInstance = echarts.init(el);
+                    liveChartInstance = echarts.init(el, isDark.value ? 'dark' : undefined);
+                    
+                    const color = isDark.value ? '#3b82f6' : '#2563eb';
+                    const areaColor = isDark.value 
+                        ? new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(59, 130, 246, 0.5)' }, { offset: 1, color: 'rgba(59, 130, 246, 0)' }])
+                        : new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(37, 99, 235, 0.3)' }, { offset: 1, color: 'rgba(37, 99, 235, 0)' }]);
+
                     liveChartInstance.setOption({
+                        backgroundColor: 'transparent',
                         grid: { top: 10, right: 0, bottom: 0, left: 0 },
                         xAxis: { type: 'category', show: false, data: new Array(30).fill('') },
                         yAxis: { type: 'value', show: false },
@@ -250,13 +323,8 @@
                             data: liveChartData.value,
                             smooth: true,
                             symbol: 'none',
-                            areaStyle: {
-                                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                                    { offset: 0, color: 'rgba(59, 130, 246, 0.5)' },
-                                    { offset: 1, color: 'rgba(59, 130, 246, 0)' }
-                                ])
-                            },
-                            lineStyle: { width: 2, color: '#3b82f6' }
+                            areaStyle: { color: areaColor },
+                            lineStyle: { width: 3, color: color }
                         }]
                     });
                 };
@@ -266,39 +334,31 @@
                         const res = await fetch('/api/realtime');
                         const data = await res.json();
                         
-                        // 计算总数和速度
                         let currentTotalDown = 0;
                         let currentTotalUp = 0;
-                        
                         data.forEach(item => {
                             currentTotalDown += item.download;
                             currentTotalUp += item.upload;
-                            // 为每个容器计算瞬时速度 (前端简单模拟，用于排序)
-                            item.speed = 0; // 这里的逻辑可以优化，如果后端传了 lastValue
                         });
 
-                        // 计算瞬时下行速度 (Diff)
                         if (window.lastTotalDown !== undefined) {
                             const diff = currentTotalDown - window.lastTotalDown;
-                            totalSpeedDown.value = diff > 0 ? diff / 2 : 0; // 2秒间隔
+                            totalSpeedDown.value = diff > 0 ? diff / 2 : 0; 
                         }
-                        
                         window.lastTotalDown = currentTotalDown;
                         totalUpload.value = currentTotalUp;
                         totalDownload.value = currentTotalDown;
                         stats.value = data;
 
-                        // 更新图表
                         liveChartData.value.shift();
                         liveChartData.value.push(totalSpeedDown.value);
                         if (liveChartInstance) {
                             liveChartInstance.setOption({ series: [{ data: liveChartData.value }] });
                         }
-
-                    } catch(e) { console.error(e); }
+                    } catch(e) {}
                 };
 
-                // 报表逻辑 (简化版，包含饼图)
+                // 报表相关
                 const reportRange = ref('day');
                 const reportTotalUp = ref(0);
                 const reportTotalDown = ref(0);
@@ -306,7 +366,6 @@
 
                 const loadHistory = async (range) => {
                     reportRange.value = range;
-                    // 确保 DOM 渲染后再画图
                     nextTick(async () => {
                          const res = await fetch(`/api/history?range=${range}`);
                          const data = await res.json();
@@ -319,7 +378,6 @@
                     let pieData = {};
                     let totalUp = 0, totalDown = 0;
 
-                    // 处理数据
                     const seriesData = times.map(t => {
                         let sum = 0;
                         for(let name in data[t]) {
@@ -327,54 +385,52 @@
                             sum += d;
                             totalUp += data[t][name].up;
                             totalDown += data[t][name].down;
-                            
                             if (!pieData[name]) pieData[name] = 0;
                             pieData[name] += d;
                         }
                         return sum;
                     });
-
                     reportTotalUp.value = totalUp;
                     reportTotalDown.value = totalDown;
 
                     // 趋势图
                     const trendEl = document.getElementById('trendChart');
                     if (trendEl) {
-                        if (!trendChartInstance) trendChartInstance = echarts.init(trendEl);
+                        if (trendChartInstance) trendChartInstance.dispose();
+                        trendChartInstance = echarts.init(trendEl, isDark.value ? 'dark' : undefined);
+                        
                         trendChartInstance.setOption({
+                            backgroundColor: 'transparent',
                             tooltip: { trigger: 'axis' },
-                            grid: { left: 10, right: 10, top: 10, bottom: 20, containLabel: true },
-                            xAxis: { type: 'category', data: times, axisLine: {lineStyle: {color:'#475569'}} },
-                            yAxis: { type: 'value', splitLine: {lineStyle: {color:'#334155'}} },
-                            series: [{ data: seriesData, type: 'line', smooth: true, areaStyle: {opacity:0.2}, itemStyle: {color:'#3b82f6'} }]
+                            grid: { left: 0, right: 0, top: 20, bottom: 20, containLabel: true },
+                            xAxis: { type: 'category', data: times, axisLine: {show:false}, axisTick:{show:false} },
+                            yAxis: { type: 'value', splitLine: {lineStyle: {type:'dashed', opacity:0.2}} },
+                            series: [{ data: seriesData, type: 'line', smooth: true, areaStyle: {opacity:0.1}, itemStyle: {color: isDark.value?'#3b82f6':'#2563eb'} }]
                         });
                     }
 
                     // 饼图
                     const pieEl = document.getElementById('pieChart');
                     if (pieEl) {
-                         if (!pieChartInstance) pieChartInstance = echarts.init(pieEl);
-                         const pieSeries = Object.entries(pieData)
-                            .map(([name, value]) => ({name, value}))
-                            .sort((a,b) => b.value - a.value)
-                            .slice(0, 5); // 只取前5
-                         
-                         topReportItems.value = pieSeries; // 用于海报榜单
+                         if (pieChartInstance) pieChartInstance.dispose();
+                         pieChartInstance = echarts.init(pieEl, isDark.value ? 'dark' : undefined);
+                         const pieSeries = Object.entries(pieData).map(([name, value]) => ({name, value})).sort((a,b) => b.value - a.value).slice(0, 5);
+                         topReportItems.value = pieSeries;
 
                          pieChartInstance.setOption({
+                            backgroundColor: 'transparent',
                             tooltip: { trigger: 'item' },
                             series: [{
                                 type: 'pie',
                                 radius: ['40%', '70%'],
-                                data: pieSeries,
-                                itemStyle: { borderRadius: 5, borderColor: '#1e293b', borderWidth: 2 },
-                                label: { show: false }
+                                center: ['50%', '50%'],
+                                itemStyle: { borderRadius: 6, borderColor: isDark.value ? '#1e293b' : '#fff', borderWidth: 2 },
+                                data: pieSeries
                             }]
                          });
                     }
                 };
                 
-                // 生成海报
                 const generatePoster = () => {
                     const el = document.getElementById('poster-node');
                     el.style.opacity = 1;
@@ -388,6 +444,7 @@
                 };
 
                 onMounted(() => {
+                    updateThemeClass(); // 初始化主题
                     initLiveChart();
                     fetchRealtime();
                     setInterval(fetchRealtime, 2000);
@@ -399,10 +456,8 @@
                 });
 
                 return {
-                    currentTab, stats, sortedStats, totalSpeedDown, totalUpload, totalDownload,
-                    formatNum, formatUnit, formatBytes, getIcon,
-                    reportRange, loadHistory, reportTotalUp, reportTotalDown, topReportItems,
-                    generatePoster
+                    isDark, toggleTheme, currentTab, stats, sortedStats, totalSpeedDown, totalUpload, totalDownload,
+                    formatNum, formatUnit, formatBytes, getIcon, reportRange, loadHistory, reportTotalUp, reportTotalDown, topReportItems, generatePoster
                 };
             }
         }).mount('#app');
