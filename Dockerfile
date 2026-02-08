@@ -2,24 +2,23 @@
 FROM golang:1.21-alpine AS builder
 WORKDIR /app
 
-# 1. 安装 Git 和 GCC (下载和编译必须)
+# === 核心修复 ===
+# 1. 安装 git (下载代码必须)
+# 2. 安装 gcc, musl-dev, libpcap-dev (抓包库编译必须)
 RUN apk add --no-cache git gcc musl-dev libpcap-dev
 
-# 2. 设置 Go 代理 (解决国内/GitHub网络超时)
-ENV GOPROXY=https://goproxy.io,direct
-
-# 3. 复制所有代码 (main.go 和 go.mod)
 COPY . .
 
-# 4. 强制刷新依赖
-# 删除旧的 go.mod，重新生成，确保干净
+# === 依赖管理 ===
+# 强制重置 go.mod，防止本地残留导致冲突
 RUN rm -f go.mod go.sum
 RUN go mod init retroflow
 
-# 5. 自动下载依赖 (因为 main.go 里有 import，这一步会自动下载 Gin 等库)
+# 这里的 GOPROXY 删除掉，GitHub Actions 在海外直连最快
+# 自动下载 main.go 中引用的所有库
 RUN go mod tidy
 
-# 6. 编译
+# 编译 (CGO_ENABLED=1 开启抓包支持)
 RUN CGO_ENABLED=1 go build -ldflags="-s -w" -o app main.go
 
 # 第二阶段：运行环境
