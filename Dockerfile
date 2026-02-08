@@ -2,25 +2,37 @@
 FROM golang:1.21-alpine AS builder
 WORKDIR /app
 
-# === 关键修正 ===
-# 必须安装 git，否则 go mod tidy 无法下载依赖！
-# gcc, musl-dev, libpcap-dev 是 CGO 编译和抓包必备的
+# 1. 安装系统级依赖 (Git + GCC + Libpcap)
+# 这一步必不可少，否则无法抓包和下载代码
 RUN apk add --no-cache git gcc musl-dev libpcap-dev
 
+# 2. 设置 Go 代理 (关键！解决网络超时问题)
+ENV GOPROXY=https://goproxy.io,direct
+
+# 3. 复制源代码
 COPY . .
 
-# 1. 自动下载 Go 依赖
-# (现在有了 git，这一步就能成功下载代码了)
+# 4. 强制初始化依赖 (解决依赖冲突)
+# 我们先删掉你本地可能残留的 go.mod，让 Docker 重新生成一个干净的
+RUN rm -f go.mod go.sum
+RUN go mod init retroflow
+
+# 5. 手动下载核心库 (分步执行，防止卡死)
+RUN go get github.com/gin-gonic/gin
+RUN go get github.com/google/gopacket
+RUN go get github.com/docker/docker/client
+
+# 6. 最后整理一次依赖
 RUN go mod tidy
 
-# 2. 编译 (CGO_ENABLED=1 开启抓包支持)
+# 7. 编译 (开启 CGO 支持)
 RUN CGO_ENABLED=1 go build -ldflags="-s -w" -o app main.go
 
 # 第二阶段：运行环境 (保持小巧)
 FROM alpine:latest
 WORKDIR /root/
 
-# 安装 libpcap 运行时库 (否则抓包程序跑不起来)
+# 安装运行时库
 RUN apk add --no-cache libpcap tzdata
 
 COPY --from=builder /app/app .
