@@ -2,179 +2,198 @@
 <html lang="zh-CN" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RetroFlow 溯光</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RetroFlow 溯光 Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <style>
-        /* 映迹风格：深色玻璃拟态 */
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        .glass {
-            background: rgba(30, 41, 59, 0.6);
+        body { font-family: 'Inter', system-ui, sans-serif; }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.4);
             backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
-        .glass-card {
-            background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%);
-            border: 1px solid rgba(255,255,255,0.05);
-        }
-        .active-tab {
+        .nav-btn.active {
             background: rgba(59, 130, 246, 0.2);
             color: #60a5fa;
-            border: 1px solid rgba(59, 130, 246, 0.4);
+            border-color: rgba(59, 130, 246, 0.4);
         }
-        /* 隐藏滚动条但保留功能 */
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="bg-[#0f172a] text-slate-200 min-h-screen selection:bg-blue-500 selection:text-white">
-    <div id="app" class="max-w-lg mx-auto min-h-screen flex flex-col relative pb-20">
+<body class="bg-[#0b1121] text-slate-200 min-h-screen">
+    <div id="app" class="min-h-screen flex flex-col">
         
-        <div class="px-6 py-6 flex justify-between items-end sticky top-0 z-40 bg-[#0f172a]/90 backdrop-blur-md">
-            <div>
-                <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 tracking-tight">RetroFlow</h1>
-                <p class="text-xs text-slate-500 font-medium tracking-widest uppercase mt-1">NAS Traffic Monitor</p>
-            </div>
-            <div class="flex gap-2">
-                <button @click="currentTab = 'live'" :class="['px-3 py-1 text-xs rounded-full transition-all', currentTab === 'live' ? 'active-tab' : 'text-slate-500 hover:text-slate-300']">实时</button>
-                <button @click="currentTab = 'report'; loadHistory('day')" :class="['px-3 py-1 text-xs rounded-full transition-all', currentTab === 'report' ? 'active-tab' : 'text-slate-500 hover:text-slate-300']">报表</button>
-            </div>
-        </div>
-
-        <div v-show="currentTab === 'live'" class="px-6 space-y-6 animate-fade-in">
-            <div class="glass rounded-3xl p-6 relative overflow-hidden">
-                <div class="absolute -top-10 -right-10 w-40 h-40 bg-blue-600 rounded-full blur-[80px] opacity-20"></div>
-                <div class="relative z-10 text-center">
-                    <p class="text-slate-400 text-xs uppercase tracking-wider mb-2">Total Downlink</p>
-                    <div class="text-5xl font-bold text-white font-mono tracking-tighter">
-                        {{ formatSpeed(totalSpeedDown) }}<span class="text-lg text-slate-500 font-normal ml-1">/s</span>
-                    </div>
-                    <div class="mt-6 grid grid-cols-2 gap-4 border-t border-white/5 pt-4">
-                        <div>
-                            <div class="text-xs text-slate-500 mb-1">总上传</div>
-                            <div class="text-emerald-400 font-mono text-sm">{{ formatBytes(totalUpload) }}</div>
-                        </div>
-                        <div>
-                            <div class="text-xs text-slate-500 mb-1">总下载</div>
-                            <div class="text-blue-400 font-mono text-sm">{{ formatBytes(totalDownload) }}</div>
-                        </div>
-                    </div>
+        <header class="border-b border-white/5 bg-[#0f172a]/80 backdrop-blur-md sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-500 to-purple-600 flex items-center justify-center font-bold text-white">R</div>
+                    <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">RetroFlow</h1>
+                </div>
+                <div class="flex gap-2">
+                    <button @click="currentTab='live'" :class="['px-4 py-1.5 text-sm rounded-lg border border-transparent transition-all', currentTab==='live' ? 'nav-btn active' : 'text-slate-400 hover:text-white']">监控台</button>
+                    <button @click="currentTab='report'; loadHistory('day')" :class="['px-4 py-1.5 text-sm rounded-lg border border-transparent transition-all', currentTab==='report' ? 'nav-btn active' : 'text-slate-400 hover:text-white']">历史报表</button>
                 </div>
             </div>
+        </header>
 
-            <div>
-                <h2 class="text-sm font-bold text-slate-500 mb-4 px-1">正在运行</h2>
-                <div class="space-y-3">
-                    <div v-for="item in sortedStats" :key="item.name" class="glass-card rounded-2xl p-4 flex items-center justify-between group hover:bg-white/5 transition-colors">
-                        <div class="flex items-center gap-4">
-                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center text-xl shadow-inner border border-white/5">
-                                {{ getIcon(item.name) }}
-                            </div>
+        <main class="flex-1 max-w-7xl mx-auto w-full p-4 sm:p-6 lg:p-8">
+            
+            <div v-show="currentTab === 'live'" class="space-y-6 animate-fade-in">
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="glass-panel rounded-2xl p-6 relative overflow-hidden md:col-span-1">
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
+                        <p class="text-xs text-slate-400 uppercase tracking-widest font-semibold mb-2">Realtime Downlink</p>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-4xl lg:text-5xl font-bold text-white font-mono">{{ formatNum(totalSpeedDown) }}</span>
+                            <span class="text-sm text-slate-500">{{ formatUnit(totalSpeedDown) }}/s</span>
+                        </div>
+                        <div class="mt-6 pt-4 border-t border-white/5 flex justify-between items-end">
                             <div>
-                                <h3 class="font-bold text-sm text-slate-200">{{ item.name }}</h3>
-                                <div class="text-[10px] text-slate-500 bg-slate-800/50 px-1.5 py-0.5 rounded inline-block mt-1 border border-white/5">{{ item.type }}</div>
+                                <div class="text-xs text-slate-500">累计上传</div>
+                                <div class="text-emerald-400 font-mono text-sm">{{ formatBytes(totalUpload) }}</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-xs text-slate-500">累计下载</div>
+                                <div class="text-blue-400 font-mono text-sm">{{ formatBytes(totalDownload) }}</div>
                             </div>
                         </div>
-                        <div class="text-right">
-                            <div class="font-mono text-xs text-blue-400 mb-1">↓ {{ formatBytes(item.download) }}</div>
-                            <div class="font-mono text-xs text-emerald-500/80">↑ {{ formatBytes(item.upload) }}</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div v-show="currentTab === 'report'" class="px-6 space-y-6">
-            <div class="flex bg-slate-800/50 p-1 rounded-xl">
-                <button @click="loadHistory('day')" :class="['flex-1 py-1.5 text-xs rounded-lg transition-all', reportRange === 'day' ? 'bg-slate-700 text-white shadow' : 'text-slate-400']">今日</button>
-                <button @click="loadHistory('month')" :class="['flex-1 py-1.5 text-xs rounded-lg transition-all', reportRange === 'month' ? 'bg-slate-700 text-white shadow' : 'text-slate-400']">本月</button>
-                <button @click="loadHistory('year')" :class="['flex-1 py-1.5 text-xs rounded-lg transition-all', reportRange === 'year' ? 'bg-slate-700 text-white shadow' : 'text-slate-400']">今年</button>
-            </div>
-
-            <div class="glass rounded-2xl p-4">
-                <h3 class="text-xs text-slate-500 mb-4">流量趋势</h3>
-                <div id="trendChart" style="width: 100%; height: 200px;"></div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-                <div class="glass-card rounded-2xl p-4 text-center">
-                    <p class="text-xs text-slate-500 mb-1">周期总下载</p>
-                    <p class="text-xl font-bold text-blue-400 font-mono">{{ formatBytes(reportTotalDown) }}</p>
-                </div>
-                <div class="glass-card rounded-2xl p-4 text-center">
-                    <p class="text-xs text-slate-500 mb-1">周期总上传</p>
-                    <p class="text-xl font-bold text-emerald-400 font-mono">{{ formatBytes(reportTotalUp) }}</p>
-                </div>
-            </div>
-
-            <button @click="generatePoster" class="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl text-sm font-bold shadow-lg shadow-blue-900/50 active:scale-95 transition-transform flex items-center justify-center gap-2">
-                <span class="text-lg">📸</span> 生成{{ getReportTitle() }}海报
-            </button>
-        </div>
-
-        <div id="poster-node" class="fixed top-0 left-0 w-[375px] bg-[#0f172a] p-8 -z-50 pointer-events-none opacity-0">
-            <div class="border border-slate-700 rounded-3xl p-6 bg-gradient-to-b from-slate-800 to-[#0f172a] relative overflow-hidden">
-                <div class="absolute -top-20 -right-20 w-64 h-64 bg-blue-600/20 rounded-full blur-3xl"></div>
-                <div class="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500"></div>
-
-                <div class="relative z-10">
-                    <div class="flex justify-between items-start mb-8">
-                        <div>
-                            <h1 class="text-3xl font-bold text-white mb-1">RetroFlow</h1>
-                            <p class="text-sm text-slate-400">流量统计报告</p>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-xs text-slate-500 uppercase tracking-widest">DATE</p>
-                            <p class="text-sm text-white font-mono">{{ new Date().toLocaleDateString() }}</p>
-                        </div>
                     </div>
 
-                    <div class="text-center mb-8">
-                        <p class="text-xs text-slate-400 mb-2 uppercase">{{ getReportTitle() }}总消耗</p>
-                        <p class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 font-mono">
-                            {{ formatBytes(reportTotalDown + reportTotalUp) }}
-                        </p>
+                    <div class="glass-panel rounded-2xl p-4 md:col-span-2 flex flex-col">
+                        <h3 class="text-xs text-slate-500 uppercase mb-2">Traffic Wave (30s)</h3>
+                        <div id="liveChart" class="flex-1 w-full min-h-[160px]"></div>
                     </div>
+                </div>
 
-                    <div class="space-y-3 mb-8">
-                        <p class="text-xs text-slate-500 uppercase tracking-wider mb-2">Top Consumers</p>
-                        <div v-for="(item, idx) in topReportItems" :key="idx" class="flex justify-between items-center py-2 border-b border-white/5">
-                            <div class="flex items-center gap-3">
-                                <span class="text-xs font-mono text-slate-600 w-4">0{{ idx + 1 }}</span>
-                                <span class="text-sm font-bold text-slate-200">{{ item.name }}</span>
+                <div>
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-lg font-bold text-slate-200">容器状态 <span class="text-xs font-normal text-slate-500 ml-2">({{ stats.length }} running)</span></h2>
+                        <span class="text-xs text-slate-500 flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Live
+                        </span>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        <div v-for="item in sortedStats" :key="item.name" class="glass-panel rounded-xl p-4 hover:bg-white/5 transition-colors group">
+                            <div class="flex justify-between items-start mb-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-lg bg-[#1e293b] flex items-center justify-center text-xl shadow-inner border border-white/5">
+                                        {{ getIcon(item.name) }}
+                                    </div>
+                                    <div class="overflow-hidden">
+                                        <h3 class="font-bold text-sm text-slate-200 truncate max-w-[120px]" :title="item.name">{{ item.name }}</h3>
+                                        <div class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 inline-block mt-1">{{ item.type }}</div>
+                                    </div>
+                                </div>
+                                <div v-if="item.speed > 0" class="flex h-2 w-2">
+                                    <span class="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-green-400 opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                                </div>
                             </div>
-                            <span class="text-xs font-mono text-blue-400">{{ formatBytes(item.total) }}</span>
+                            
+                            <div class="space-y-2">
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-slate-500">下载</span>
+                                    <span class="font-mono text-blue-400">{{ formatBytes(item.download) }}</span>
+                                </div>
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-slate-500">上传</span>
+                                    <span class="font-mono text-emerald-400">{{ formatBytes(item.upload) }}</span>
+                                </div>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="flex justify-between items-end text-xs text-slate-600 mt-12">
-                        <span>Powered by 溯光 · NAS</span>
-                        <span class="font-mono">#DATA_VISUALIZATION</span>
+                        <div v-if="stats.length === 0" class="col-span-full py-10 text-center text-slate-600">
+                            正在扫描容器...
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
+            <div v-show="currentTab === 'report'" class="space-y-6">
+                <div class="glass-panel rounded-2xl p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-lg font-bold">流量统计</h2>
+                        <div class="bg-slate-800 p-1 rounded-lg flex text-xs">
+                            <button v-for="r in ['day','month','year']" @click="loadHistory(r)" 
+                                :class="['px-3 py-1.5 rounded-md transition-all', reportRange===r ? 'bg-slate-600 text-white' : 'text-slate-400']">
+                                {{ {day:'今日',month:'本月',year:'今年'}[r] }}
+                            </button>
+                        </div>
+                    </div>
+                    <div id="trendChart" class="w-full h-[300px]"></div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                     <div class="glass-panel rounded-2xl p-6">
+                        <h3 class="text-sm font-bold text-slate-400 mb-4">流量占比 Top 5</h3>
+                        <div id="pieChart" class="w-full h-[250px]"></div>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="glass-panel rounded-2xl p-6 flex justify-between items-center">
+                            <div>
+                                <p class="text-xs text-slate-500">周期总下载</p>
+                                <p class="text-2xl font-bold text-blue-400 font-mono">{{ formatBytes(reportTotalDown) }}</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500">↓</div>
+                        </div>
+                        <div class="glass-panel rounded-2xl p-6 flex justify-between items-center">
+                            <div>
+                                <p class="text-xs text-slate-500">周期总上传</p>
+                                <p class="text-2xl font-bold text-emerald-400 font-mono">{{ formatBytes(reportTotalUp) }}</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500">↑</div>
+                        </div>
+                         <button @click="generatePoster" class="w-full py-4 glass-panel hover:bg-white/5 rounded-2xl text-sm font-bold transition-all flex items-center justify-center gap-2 text-slate-300">
+                            📸 生成海报
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="poster-node" class="fixed top-0 left-0 w-[400px] bg-[#0b1121] p-0 -z-50 opacity-0 pointer-events-none">
+                <div class="p-8 bg-gradient-to-b from-slate-900 to-[#0b1121] border border-slate-800">
+                     <h1 class="text-3xl font-bold text-white mb-2">RetroFlow</h1>
+                     <p class="text-sm text-slate-500 mb-8">{{ new Date().toLocaleDateString() }} 流量日报</p>
+                     <div class="text-center py-8 bg-slate-800/30 rounded-2xl mb-8">
+                        <p class="text-xs text-slate-500 uppercase">总流量消耗</p>
+                        <p class="text-4xl font-bold text-blue-400 mt-2">{{ formatBytes(reportTotalDown + reportTotalUp) }}</p>
+                     </div>
+                     <div class="space-y-4">
+                        <div v-for="(item, i) in topReportItems" :key="i" class="flex justify-between border-b border-white/5 py-2">
+                            <span class="text-slate-300">{{ i+1 }}. {{ item.name }}</span>
+                            <span class="font-mono text-slate-500">{{ formatBytes(item.total) }}</span>
+                        </div>
+                     </div>
+                </div>
+            </div>
+
+        </main>
     </div>
 
     <script>
-        const { createApp, ref, computed, onMounted, nextTick } = Vue;
+        const { createApp, ref, computed, onMounted, nextTick, watch } = Vue;
 
         createApp({
             setup() {
                 const currentTab = ref('live');
                 const stats = ref([]);
                 const totalSpeedDown = ref(0);
+                const totalUpload = ref(0);
+                const totalDownload = ref(0);
                 
-                // 报表数据
-                const reportRange = ref('day');
-                const reportData = ref({});
-                const reportChart = ref(null);
+                // 图表实例
+                let liveChartInstance = null;
+                let trendChartInstance = null;
+                let pieChartInstance = null;
+                
+                // 实时图表数据缓冲
+                const liveChartData = ref(new Array(30).fill(0)); // 30秒数据
 
                 const formatBytes = (bytes) => {
                     if (bytes === 0) return '0 B';
@@ -183,119 +202,185 @@
                     const i = Math.floor(Math.log(bytes) / Math.log(k));
                     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
                 };
-
-                const formatSpeed = (bytes) => formatBytes(bytes);
+                const formatNum = (bytes) => {
+                    if (bytes === 0) return '0';
+                    const k = 1024;
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(2));
+                }
+                const formatUnit = (bytes) => {
+                    if (bytes === 0) return 'B';
+                    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+                    return sizes[i];
+                }
 
                 const getIcon = (name) => {
                     name = name.toLowerCase();
-                    if (name.includes('emby')) return '🎬';
-                    if (name.includes('nginx')) return '🌐';
-                    if (name.includes('qbittorrent') || name.includes('download')) return '⬇️';
+                    if (name.includes('emby') || name.includes('plex')) return '🎬';
+                    if (name.includes('nginx') || name.includes('proxy')) return '🌐';
+                    if (name.includes('qbittorrent') || name.includes('transmission')) return '⬇️';
+                    if (name.includes('mysql') || name.includes('redis') || name.includes('db')) return '🗄️';
+                    if (name.includes('homeassistant')) return '🏠';
+                    if (name.includes('docker')) return '🐳';
                     return '📦';
                 };
 
-                // 计算属性
-                const sortedStats = computed(() => [...stats.value].sort((a,b) => (b.up+b.down) - (a.up+a.down)));
-                const totalUpload = computed(() => stats.value.reduce((acc, cur) => acc + cur.upload, 0));
-                const totalDownload = computed(() => stats.value.reduce((acc, cur) => acc + cur.download, 0));
-
-                // 报表计算属性
-                const reportTotalUp = computed(() => {
-                    let sum = 0;
-                    for(let t in reportData.value) {
-                        for(let n in reportData.value[t]) sum += reportData.value[t][n].up;
-                    }
-                    return sum;
-                });
-                const reportTotalDown = computed(() => {
-                    let sum = 0;
-                    for(let t in reportData.value) {
-                        for(let n in reportData.value[t]) sum += reportData.value[t][n].down;
-                    }
-                    return sum;
-                });
-                const topReportItems = computed(() => {
-                    let totals = {};
-                    for(let t in reportData.value) {
-                        for(let n in reportData.value[t]) {
-                            if(!totals[n]) totals[n] = 0;
-                            totals[n] += (reportData.value[t][n].up + reportData.value[t][n].down);
-                        }
-                    }
-                    return Object.entries(totals)
-                        .map(([name, total]) => ({name, total}))
-                        .sort((a,b) => b.total - a.total)
-                        .slice(0, 5);
+                const sortedStats = computed(() => {
+                    // 排序：有速度的排前面，然后按总流量排
+                    return [...stats.value].sort((a, b) => {
+                        const speedA = a.speed || 0; 
+                        const speedB = b.speed || 0;
+                        if (speedA !== speedB) return speedB - speedA;
+                        return (b.upload + b.download) - (a.upload + a.download);
+                    });
                 });
 
-                // 核心逻辑
+                // 初始化实时波形图
+                const initLiveChart = () => {
+                    const el = document.getElementById('liveChart');
+                    if (!el) return;
+                    liveChartInstance = echarts.init(el);
+                    liveChartInstance.setOption({
+                        grid: { top: 10, right: 0, bottom: 0, left: 0 },
+                        xAxis: { type: 'category', show: false, data: new Array(30).fill('') },
+                        yAxis: { type: 'value', show: false },
+                        series: [{
+                            type: 'line',
+                            data: liveChartData.value,
+                            smooth: true,
+                            symbol: 'none',
+                            areaStyle: {
+                                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                    { offset: 0, color: 'rgba(59, 130, 246, 0.5)' },
+                                    { offset: 1, color: 'rgba(59, 130, 246, 0)' }
+                                ])
+                            },
+                            lineStyle: { width: 2, color: '#3b82f6' }
+                        }]
+                    });
+                };
+
                 const fetchRealtime = async () => {
                     try {
                         const res = await fetch('/api/realtime');
                         const data = await res.json();
                         
-                        // 估算速度 (和上次数据对比)
-                        let currentTotal = data.reduce((acc, cur) => acc + cur.download, 0);
-                        if (window.lastTotal !== undefined) {
-                            let diff = currentTotal - window.lastTotal;
-                            if (diff >= 0) totalSpeedDown.value = diff / 2; // 2秒刷新一次
+                        // 计算总数和速度
+                        let currentTotalDown = 0;
+                        let currentTotalUp = 0;
+                        
+                        data.forEach(item => {
+                            currentTotalDown += item.download;
+                            currentTotalUp += item.upload;
+                            // 为每个容器计算瞬时速度 (前端简单模拟，用于排序)
+                            item.speed = 0; // 这里的逻辑可以优化，如果后端传了 lastValue
+                        });
+
+                        // 计算瞬时下行速度 (Diff)
+                        if (window.lastTotalDown !== undefined) {
+                            const diff = currentTotalDown - window.lastTotalDown;
+                            totalSpeedDown.value = diff > 0 ? diff / 2 : 0; // 2秒间隔
                         }
-                        window.lastTotal = currentTotal;
+                        
+                        window.lastTotalDown = currentTotalDown;
+                        totalUpload.value = currentTotalUp;
+                        totalDownload.value = currentTotalDown;
                         stats.value = data;
-                    } catch(e) {}
+
+                        // 更新图表
+                        liveChartData.value.shift();
+                        liveChartData.value.push(totalSpeedDown.value);
+                        if (liveChartInstance) {
+                            liveChartInstance.setOption({ series: [{ data: liveChartData.value }] });
+                        }
+
+                    } catch(e) { console.error(e); }
                 };
+
+                // 报表逻辑 (简化版，包含饼图)
+                const reportRange = ref('day');
+                const reportTotalUp = ref(0);
+                const reportTotalDown = ref(0);
+                const topReportItems = ref([]);
 
                 const loadHistory = async (range) => {
                     reportRange.value = range;
-                    const res = await fetch(`/api/history?range=${range}`);
-                    const data = await res.json();
-                    reportData.value = data;
-                    renderChart(data);
-                };
-
-                const renderChart = (data) => {
-                    nextTick(() => {
-                        const chartDom = document.getElementById('trendChart');
-                        if(!reportChart.value) reportChart.value = echarts.init(chartDom, 'dark');
-                        
-                        const times = Object.keys(data);
-                        // 简单处理：只取总流量做趋势
-                        const seriesData = times.map(t => {
-                            let sum = 0;
-                            for(let n in data[t]) sum += (data[t][n].down + data[t][n].up);
-                            return sum;
-                        });
-
-                        reportChart.value.setOption({
-                            backgroundColor: 'transparent',
-                            tooltip: { trigger: 'axis' },
-                            grid: { top: 10, bottom: 20, left: 10, right: 10, containLabel: false },
-                            xAxis: { type: 'category', data: times, show: false },
-                            yAxis: { type: 'value', show: false },
-                            series: [{
-                                data: seriesData,
-                                type: 'line',
-                                smooth: true,
-                                areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#3b82f6'},{offset:1,color:'rgba(59,130,246,0)'}]) },
-                                lineStyle: { color: '#60a5fa', width: 2 },
-                                showSymbol: false
-                            }]
-                        });
-                        reportChart.value.resize();
+                    // 确保 DOM 渲染后再画图
+                    nextTick(async () => {
+                         const res = await fetch(`/api/history?range=${range}`);
+                         const data = await res.json();
+                         renderReportCharts(data);
                     });
                 };
 
-                const getReportTitle = () => {
-                    const map = {day:'今日', month:'本月', year:'今年'};
-                    return map[reportRange.value];
-                };
+                const renderReportCharts = (data) => {
+                    const times = Object.keys(data);
+                    let pieData = {};
+                    let totalUp = 0, totalDown = 0;
 
+                    // 处理数据
+                    const seriesData = times.map(t => {
+                        let sum = 0;
+                        for(let name in data[t]) {
+                            const d = data[t][name].down + data[t][name].up;
+                            sum += d;
+                            totalUp += data[t][name].up;
+                            totalDown += data[t][name].down;
+                            
+                            if (!pieData[name]) pieData[name] = 0;
+                            pieData[name] += d;
+                        }
+                        return sum;
+                    });
+
+                    reportTotalUp.value = totalUp;
+                    reportTotalDown.value = totalDown;
+
+                    // 趋势图
+                    const trendEl = document.getElementById('trendChart');
+                    if (trendEl) {
+                        if (!trendChartInstance) trendChartInstance = echarts.init(trendEl);
+                        trendChartInstance.setOption({
+                            tooltip: { trigger: 'axis' },
+                            grid: { left: 10, right: 10, top: 10, bottom: 20, containLabel: true },
+                            xAxis: { type: 'category', data: times, axisLine: {lineStyle: {color:'#475569'}} },
+                            yAxis: { type: 'value', splitLine: {lineStyle: {color:'#334155'}} },
+                            series: [{ data: seriesData, type: 'line', smooth: true, areaStyle: {opacity:0.2}, itemStyle: {color:'#3b82f6'} }]
+                        });
+                    }
+
+                    // 饼图
+                    const pieEl = document.getElementById('pieChart');
+                    if (pieEl) {
+                         if (!pieChartInstance) pieChartInstance = echarts.init(pieEl);
+                         const pieSeries = Object.entries(pieData)
+                            .map(([name, value]) => ({name, value}))
+                            .sort((a,b) => b.value - a.value)
+                            .slice(0, 5); // 只取前5
+                         
+                         topReportItems.value = pieSeries; // 用于海报榜单
+
+                         pieChartInstance.setOption({
+                            tooltip: { trigger: 'item' },
+                            series: [{
+                                type: 'pie',
+                                radius: ['40%', '70%'],
+                                data: pieSeries,
+                                itemStyle: { borderRadius: 5, borderColor: '#1e293b', borderWidth: 2 },
+                                label: { show: false }
+                            }]
+                         });
+                    }
+                };
+                
+                // 生成海报
                 const generatePoster = () => {
                     const el = document.getElementById('poster-node');
                     el.style.opacity = 1;
-                    html2canvas(el, { backgroundColor: '#0f172a', scale: 2 }).then(canvas => {
+                    html2canvas(el, { backgroundColor: '#0b1121', scale: 2 }).then(canvas => {
                         const link = document.createElement('a');
-                        link.download = `RetroFlow_${getReportTitle()}_${Date.now()}.png`;
+                        link.download = `RetroFlow_Report.png`;
                         link.href = canvas.toDataURL();
                         link.click();
                         el.style.opacity = 0;
@@ -303,15 +388,21 @@
                 };
 
                 onMounted(() => {
+                    initLiveChart();
                     fetchRealtime();
                     setInterval(fetchRealtime, 2000);
+                    window.addEventListener('resize', () => {
+                        liveChartInstance && liveChartInstance.resize();
+                        trendChartInstance && trendChartInstance.resize();
+                        pieChartInstance && pieChartInstance.resize();
+                    });
                 });
 
                 return {
-                    currentTab, stats, totalSpeedDown, totalUpload, totalDownload,
-                    sortedStats, formatBytes, formatSpeed, getIcon,
-                    reportRange, loadHistory, reportTotalUp, reportTotalDown, 
-                    topReportItems, generatePoster, getReportTitle
+                    currentTab, stats, sortedStats, totalSpeedDown, totalUpload, totalDownload,
+                    formatNum, formatUnit, formatBytes, getIcon,
+                    reportRange, loadHistory, reportTotalUp, reportTotalDown, topReportItems,
+                    generatePoster
                 };
             }
         }).mount('#app');
