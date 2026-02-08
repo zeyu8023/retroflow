@@ -1,41 +1,40 @@
-# 第一阶段：编译环境 (升级到 1.22)
-FROM golang:1.22-alpine AS builder
+# === 第一阶段：构建环境 (使用 Debian，工具最全) ===
+FROM golang:1.22 AS builder
 WORKDIR /app
 
-# 1. 安装系统依赖 (Git + GCC + Libpcap)
-RUN apk add --no-cache git gcc musl-dev libpcap-dev
+# 1. 换源并安装 libpcap-dev (Debian 下叫这个名字)
+# 这一步非常稳，不会像 Alpine 那样缺这缺那
+RUN apt-get update && apt-get install -y libpcap-dev
 
 # 2. 设置 Go 代理 (使用官方源，速度快且稳)
 ENV GOPROXY=https://proxy.golang.org,direct
 
-# 3. 复制 main.go (只复制这一个文件，保证纯净)
-COPY main.go .
+# 3. 复制依赖文件
+COPY go.mod ./
+# 如果你有 go.sum 也复制，没有也没关系
+COPY go.sum* ./
 
-# 4. 初始化模块
-# 强制删除旧的 go.mod，重新生成
-RUN rm -f go.mod go.sum
-RUN go mod init retroflow
-
-# 5. === 手动安装核心库 (逐个击破) ===
-# Gin Web 框架
-RUN go get github.com/gin-gonic/gin@v1.9.1
-# Gopacket 抓包库
-RUN go get github.com/google/gopacket@v1.1.19
-# Docker SDK (指定兼容版本，避免 conflict)
-RUN go get github.com/docker/docker/client@v24.0.7+incompatible
-RUN go get github.com/docker/docker/api/types@v24.0.7+incompatible
-
-# 6. 整理依赖
+# 4. 自动下载依赖 (Git 和 GCC 都有，这里绝对不会报错了)
+RUN go mod download
 RUN go mod tidy
 
-# 7. 编译 (CGO 必须开启)
+# 5. 复制源码并编译
+COPY . .
+# CGO_ENABLED=1 开启抓包支持
 RUN CGO_ENABLED=1 go build -ldflags="-s -w" -o app main.go
 
-# 第二阶段：运行环境
+# === 第二阶段：运行环境 (还是用 Alpine 保持轻量) ===
 FROM alpine:latest
 WORKDIR /root/
-# 安装 libpcap
-RUN apk add --no-cache libpcap tzdata
+
+# 安装运行时库 (必须要有 libpcap)
+# 换个源防止安装慢
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+RUN apk add --no-cache libpcap tzdata ca-certificates
+
 COPY --from=builder /app/app .
+
+# 暴露端口
 EXPOSE 10308
+
 CMD ["./app"]
